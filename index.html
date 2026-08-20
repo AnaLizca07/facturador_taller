@@ -299,19 +299,29 @@ function parseCSV(text) {
 
 async function cargarCatalogo() {
   const searchInput = document.getElementById('search-input');
+  const noResults = document.getElementById('no-results');
   searchInput.disabled = true;
   searchInput.placeholder = "Cargando catálogo...";
+  noResults.style.display = 'none';
   try {
-    const res = await fetch(SHEET_CSV_URL + '&t=' + Date.now());
-    if (!res.ok) throw new Error('No se pudo cargar el catálogo');
+    const res = await fetch(SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + 'cachebust=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
+    if (text.trim().startsWith('<')) {
+      throw new Error('El link no devolvió un CSV (revisa que esté bien publicado)');
+    }
     PRODUCTOS = parseCSV(text);
-  } catch (err) {
-    document.getElementById('no-results').textContent = 'No se pudo cargar el catálogo. Verifica tu conexión.';
-    document.getElementById('no-results').style.display = 'block';
-  } finally {
+    if (PRODUCTOS.length === 0) {
+      throw new Error('El catálogo se cargó pero está vacío');
+    }
     searchInput.disabled = false;
     searchInput.placeholder = "Buscar producto por nombre o código...";
+  } catch (err) {
+    noResults.innerHTML = 'No se pudo cargar el catálogo.<br><span style="font-size:12px">' + err.message + '</span><br><button id="retry-btn" style="margin-top:10px;padding:8px 16px;border-radius:8px;border:1px solid #D3D1C7;background:white;">Reintentar</button>';
+    noResults.style.display = 'block';
+    searchInput.disabled = true;
+    searchInput.placeholder = "No se pudo cargar el catálogo";
+    document.getElementById('retry-btn').addEventListener('click', cargarCatalogo);
   }
 }
 
@@ -461,7 +471,7 @@ document.getElementById('send-btn').addEventListener('click', () => {
   let mensaje = `*Nuevo pedido - Taller*\n`;
   mensaje += `Fecha: ${fecha}\n\n`;
   items.forEach(item => {
-    mensaje += `${item.cantidad}x ${item.codigo} - ${item.nombre}\n`;
+    mensaje += `${item.codigo} - ${item.cantidad} - ${item.nombre}\n`;
   });
 
   const url = `https://wa.me/${NUMERO_WHATSAPP}?text=${encodeURIComponent(mensaje)}`;
