@@ -170,6 +170,27 @@
     font-size: 15px;
     font-weight: 600;
   }
+  .qty-input {
+    width: 44px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 600;
+    border: 1px solid #D3D1C7;
+    border-radius: 8px;
+    padding: 6px 2px;
+    background: white;
+    color: #2C2C2A;
+    -moz-appearance: textfield;
+  }
+  .qty-input::-webkit-outer-spin-button,
+  .qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .qty-input:focus {
+    outline: none;
+    border-color: #1B2A4A;
+  }
   .remove-btn {
     width: 32px;
     height: 32px;
@@ -409,6 +430,16 @@ function cambiarCantidad(codigo, delta) {
   renderCarrito();
 }
 
+function establecerCantidad(codigo, valor) {
+  if (!carrito[codigo]) return;
+  if (isNaN(valor) || valor <= 0) {
+    delete carrito[codigo];
+  } else {
+    carrito[codigo].cantidad = valor;
+  }
+  renderCarrito();
+}
+
 function quitarDelCarrito(codigo) {
   delete carrito[codigo];
   renderCarrito();
@@ -440,7 +471,7 @@ function renderCarrito() {
       </div>
       <div class="qty-control">
         <button class="qty-btn" data-action="menos" data-codigo="${item.codigo}">−</button>
-        <span class="qty-value">${item.cantidad}</span>
+        <input class="qty-input" type="text" inputmode="numeric" pattern="[0-9]*" value="${item.cantidad}" data-codigo="${item.codigo}">
         <button class="qty-btn" data-action="mas" data-codigo="${item.codigo}">+</button>
       </div>
       <button class="remove-btn" data-action="quitar" data-codigo="${item.codigo}">✕</button>
@@ -456,6 +487,16 @@ function renderCarrito() {
   cartList.querySelectorAll('[data-action="quitar"]').forEach(el =>
     el.addEventListener('click', () => quitarDelCarrito(el.dataset.codigo))
   );
+  cartList.querySelectorAll('.qty-input').forEach(el => {
+    el.addEventListener('input', () => {
+      el.value = el.value.replace(/[^0-9]/g, '');
+    });
+    el.addEventListener('change', () => {
+      const codigo = el.dataset.codigo;
+      const valor = parseInt(el.value, 10);
+      establecerCantidad(codigo, valor);
+    });
+  });
 
   const totalUnidades = items.reduce((sum, i) => sum + i.cantidad, 0);
   itemCount.textContent = `${items.length} producto${items.length !== 1 ? 's' : ''} · ${totalUnidades} unidad${totalUnidades !== 1 ? 'es' : ''}`;
